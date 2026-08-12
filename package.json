@@ -1,0 +1,9 @@
+{
+  "name": "personal-os",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm --workspace @personal-os/web run dev",
+    "build": "npm --workspace @personal-os/web run build"
+  }
+}
