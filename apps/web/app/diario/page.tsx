@@ -14,6 +14,14 @@ type JournalEntry = {
 
 const seed: JournalEntry[] = [
   {
+    id: 'journal-content-collab-2026-08-28',
+    area: 'Conteúdo / Parcerias',
+    type: 'Ideia de formato',
+    text: 'Criar conteúdos online a partir de conversas com outras pessoas — amigos, clientes e parceiros — convidando-as para participar de bate-papos que possam ser gravados presencialmente ou online, por videochamada, e depois transformados em conteúdo.',
+    status: 'Ideia em exploração',
+    createdAt: '2026-08-28T21:05:00-03:00',
+  },
+  {
     id: 'journal-relationship-2026-08-28',
     area: 'Relacionamento',
     type: 'Reflexão / Insatisfação',
@@ -23,8 +31,8 @@ const seed: JournalEntry[] = [
   },
 ];
 
-const areas = ['Relacionamento', 'Trabalho', 'Pessoal', 'Família', 'Emoções', 'Saúde', 'Ideias', 'Reflexões'];
-const types = ['Reflexão', 'Insatisfação', 'Acontecimento', 'Sentimento', 'Aprendizado', 'Conversa', 'Gratidão', 'Nota livre'];
+const areas = ['Relacionamento', 'Conteúdo / Parcerias', 'Trabalho', 'Pessoal', 'Família', 'Emoções', 'Saúde', 'Ideias', 'Reflexões'];
+const types = ['Reflexão', 'Insatisfação', 'Ideia de formato', 'Acontecimento', 'Sentimento', 'Aprendizado', 'Conversa', 'Gratidão', 'Nota livre'];
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -41,8 +49,8 @@ export default function JournalPage() {
       const saved = localStorage.getItem('personal-os-journal-v1');
       if (saved) {
         const parsed = JSON.parse(saved) as JournalEntry[];
-        const hasSeed = parsed.some(e => e.id === seed[0].id);
-        setEntries(hasSeed ? parsed : [...seed, ...parsed]);
+        const missingSeeds = seed.filter(item => !parsed.some(e => e.id === item.id));
+        setEntries([...missingSeeds, ...parsed]);
       }
     } catch {}
     setReady(true);
