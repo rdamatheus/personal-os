@@ -57,7 +57,7 @@ personal-os/
 
 ## Current stage
 
-**Persistence / CRUD completion planning — v0.5.**
+**Persistence / CRUD completion — v0.5A.**
 
 Implemented foundation includes:
 
@@ -74,22 +74,25 @@ Implemented foundation includes:
 - persistent Routes and Route Steps;
 - deterministic route progress recalculation;
 - activity-log foundation;
-- transitional synchronization of Tasks, Projects and Decisions from the legacy browser store.
+- **canonical repository/data layer for Areas, Projects, Tasks, Ideas, Decisions, Routines, Check-ins and Events**;
+- centralized workspace actor context, audit logging and semantic archive/restore helpers;
+- transitional synchronization of Tasks, Projects and Decisions from the legacy browser store while those screens are migrated.
 
-The current dashboard is **not yet fully persistence-complete**. Ideas, routines, check-ins, events and Journal remain browser-only, while Tasks/Projects/Decisions still use a temporary `localStorage` synchronization bridge. The Copilot cards are still demo-only and do not call a real AI model.
+The current dashboard is **not yet fully persistence-complete**. The new repository layer exists, but several visible screens still use the legacy browser state. Journal remains browser-only, and Tasks/Projects/Decisions still retain a temporary compatibility bridge until v0.5B migrates their UI. The Copilot cards are still demo-only and do not call a real AI model.
 
 ## Current delivery gate
 
 Before enabling real AI write-proposal capabilities, Personal OS must complete the direct persistence lifecycle of its operational modules.
 
-The authoritative audit is:
+Authoritative implementation documents:
 
 - `docs/implementation/crud-audit-v0.5.md`
+- `docs/implementation/v0.5a-canonical-data-layer.md`
 
 Primary sequence:
 
-1. repository/service layer and lifecycle conventions;
-2. direct CRUD for Tasks, Projects and Goals;
+1. ✅ repository/service layer and lifecycle conventions — v0.5A;
+2. direct CRUD UI for Tasks, Projects and Goals — v0.5B;
 3. complete Route/RouteStep lifecycle;
 4. persistent Ideas and Decisions;
 5. Routines execution history, Check-ins, Events and Journal;
