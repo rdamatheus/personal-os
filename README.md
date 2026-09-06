@@ -46,8 +46,8 @@ personal-os/
 ├── docs/
 │   ├── adr/                  # Architecture decision records
 │   ├── domain/               # Domain model and taxonomies
-│   ├── implementation/       # Versioned implementation notes
-│   └── product/              # Vision, AI behavior and design system
+│   ├── implementation/       # Versioned implementation notes and audits
+│   └── product/              # Vision, AI behavior, roadmap and design system
 ├── packages/
 │   └── domain/               # Shared TypeScript domain contracts
 ├── supabase/
@@ -57,31 +57,61 @@ personal-os/
 
 ## Current stage
 
-**Foundation / v0.3.**
+**Persistence / CRUD completion planning — v0.5.**
 
 Implemented foundation includes:
 
-- Next.js Quiet Cockpit interface;
+- Next.js Quiet Cockpit interface on GitHub Pages;
 - Supabase PostgreSQL persistence foundation;
-- per-user profiles and workspaces;
-- multi-user membership model and RLS;
-- goals, projects, tasks and decisions data model;
-- persisted routes and route steps domain;
-- activity log foundation;
-- email/password authentication UI;
-- Google OAuth flow prepared in the application;
-- session protection and workspace resolution;
-- transitional synchronization between the legacy browser store and Supabase core records.
+- email/password authentication;
+- Google OAuth with production redirect configured;
+- PKCE session handling, sign-out and protected routes;
+- per-user profiles and personal workspaces;
+- multi-user workspace model and RLS isolation;
+- distinct `platform_admin` authorization;
+- secure admin user directory through a Supabase Edge Function;
+- persistent Goals;
+- persistent Routes and Route Steps;
+- deterministic route progress recalculation;
+- activity-log foundation;
+- transitional synchronization of Tasks, Projects and Decisions from the legacy browser store.
 
-## Next milestones
+The current dashboard is **not yet fully persistence-complete**. Ideas, routines, check-ins, events and Journal remain browser-only, while Tasks/Projects/Decisions still use a temporary `localStorage` synchronization bridge. The Copilot cards are still demo-only and do not call a real AI model.
 
-1. Finish external Google OAuth provider configuration.
-2. Replace the transitional `localStorage` bridge with repository-backed CRUD modules.
-3. Make Goals, Routes, Route Steps, Projects, Tasks and Decisions fully persisted UI flows.
-4. Activate the existing route cards/buttons against real database records.
-5. Add the secure AI backend and structured route generation.
-6. Implement Next Best Action and curated AI context assembly.
-7. Add daily/weekly review flows, provenance and pattern detection.
+## Current delivery gate
+
+Before enabling real AI write-proposal capabilities, Personal OS must complete the direct persistence lifecycle of its operational modules.
+
+The authoritative audit is:
+
+- `docs/implementation/crud-audit-v0.5.md`
+
+Primary sequence:
+
+1. repository/service layer and lifecycle conventions;
+2. direct CRUD for Tasks, Projects and Goals;
+3. complete Route/RouteStep lifecycle;
+4. persistent Ideas and Decisions;
+5. Routines execution history, Check-ins, Events and Journal;
+6. canonical Today/History read models;
+7. account lifecycle and automated CRUD/RLS regression tests;
+8. only then connect the secure real AI Copilot.
+
+## AI boundary
+
+When enabled, the AI will run through a secure backend boundary. Provider secrets must remain in Supabase Edge Function secrets/backend runtime and never be embedded in GitHub Pages, repository code or browser storage.
+
+Persistent/high-impact AI proposals follow:
+
+```text
+read authorized context
+→ analyze / calculate
+→ propose
+→ user confirms
+→ persist through repository
+→ audit
+→ learn from outcome
+```
 
 ## Important boundary
 
