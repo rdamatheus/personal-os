@@ -11,6 +11,7 @@ type Identity = {
   user: User;
   profile: { displayName: string; avatarUrl?: string | null };
   workspace: { id: string; name: string; role: string };
+  isPlatformAdmin: boolean;
   cloudStatus: 'ready' | 'syncing' | 'error';
   signOut: () => Promise<void>;
 };
@@ -32,6 +33,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<{ displayName: string; avatarUrl?: string | null } | null>(null);
   const [workspace, setWorkspace] = useState<{ id: string; name: string; role: string } | null>(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'ready' | 'syncing' | 'error'>('syncing');
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
@@ -42,12 +44,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     async function bootstrap(nextUser: User) {
       setCloudStatus('syncing');
       setBootstrapError(null);
-      const [profileRes, membershipRes] = await Promise.all([
+      const [profileRes, membershipRes, platformAdminRes] = await Promise.all([
         supabase.from('profiles').select('display_name,avatar_url').eq('id', nextUser.id).single(),
         supabase.from('workspace_members').select('workspace_id,role').eq('user_id', nextUser.id).eq('status', 'active').order('created_at').limit(1).single(),
+        supabase.from('platform_admins').select('user_id').eq('user_id', nextUser.id).maybeSingle(),
       ]);
       if (profileRes.error) throw profileRes.error;
       if (membershipRes.error) throw membershipRes.error;
+      if (platformAdminRes.error) throw platformAdminRes.error;
 
       const workspaceRes = await supabase.from('workspaces').select('id,name').eq('id', membershipRes.data.workspace_id).single();
       if (workspaceRes.error) throw workspaceRes.error;
@@ -57,6 +61,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setUser(nextUser);
       setProfile({ displayName: profileRes.data.display_name ?? nextUser.email?.split('@')[0] ?? 'Usuário', avatarUrl: profileRes.data.avatar_url });
       setWorkspace({ id: workspaceRes.data.id, name: workspaceRes.data.name, role: membershipRes.data.role });
+      setIsPlatformAdmin(Boolean(platformAdminRes.data));
       setCloudStatus('ready');
       stopWatching?.();
       stopWatching = watchCoreStore(workspaceRes.data.id, nextUser.id, baseline, () => setCloudStatus('error'));
@@ -92,6 +97,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         setUser(null);
         setProfile(null);
         setWorkspace(null);
+        setIsPlatformAdmin(false);
         setBootstrapError(null);
         setReady(true);
         return;
@@ -122,8 +128,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   const identity = useMemo<Identity | null>(() => {
     if (!user || !profile || !workspace) return null;
-    return { user, profile, workspace, cloudStatus, signOut };
-  }, [user, profile, workspace, cloudStatus]);
+    return { user, profile, workspace, isPlatformAdmin, cloudStatus, signOut };
+  }, [user, profile, workspace, isPlatformAdmin, cloudStatus]);
 
   if (isPublicRoute) return <>{children}</>;
 
@@ -146,7 +152,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   return <IdentityContext.Provider value={identity}>
     {children}
-    <div style={{position:'fixed',right:18,bottom:18,zIndex:80,display:'flex',gap:8,alignItems:'center'}}>
+    <div style={{position:'fixed',right:18,bottom:18,zIndex:80,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end'}}>
+      {identity.isPlatformAdmin ? <Link href="/admin/users/" aria-label="Abrir Administração de Usuários" style={{textDecoration:'none',border:'1px solid #31405a',background:'#111824',color:'#a9bfff',borderRadius:999,padding:'11px 14px',fontSize:13,fontWeight:800,boxShadow:'0 14px 40px rgba(0,0,0,.25)'}}>⚙ Usuários</Link> : null}
       <Link href="/diario/" aria-label="Abrir Diário" style={{textDecoration:'none',background:'#e8edf9',color:'#10141b',borderRadius:999,padding:'11px 14px',fontSize:13,fontWeight:800,boxShadow:'0 14px 40px rgba(0,0,0,.35)'}}>✎ Diário</Link>
       <button onClick={signOut} title={`Sair de ${identity.profile.displayName}`} style={{border:'1px solid #29313d',background:'#11161d',color:'#aeb8c6',borderRadius:999,padding:'11px 13px',fontSize:12,cursor:'pointer'}}>Sair</button>
       <span title={cloudStatus === 'ready' ? 'Sincronizado com a nuvem' : cloudStatus === 'error' ? 'Falha de sincronização' : 'Sincronizando'} style={{width:9,height:9,borderRadius:99,background:cloudStatus === 'ready' ? '#73d39b' : cloudStatus === 'error' ? '#e78a8a' : '#d7b86a',boxShadow:'0 0 0 4px rgba(255,255,255,.04)'}} />
