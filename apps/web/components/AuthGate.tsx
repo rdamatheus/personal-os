@@ -26,12 +26,14 @@ export function usePersonalOsIdentity() {
 export default function AuthGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isPublicRoute = pathname?.endsWith('/login') || pathname?.includes('/auth/callback');
+  const normalizedPathname = pathname && pathname !== '/' ? pathname.replace(/\/+$/, '') : pathname;
+  const isPublicRoute = normalizedPathname?.endsWith('/login') || normalizedPathname?.includes('/auth/callback');
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<{ displayName: string; avatarUrl?: string | null } | null>(null);
   const [workspace, setWorkspace] = useState<{ id: string; name: string; role: string } | null>(null);
   const [cloudStatus, setCloudStatus] = useState<'ready' | 'syncing' | 'error'>('syncing');
+  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -39,6 +41,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     async function bootstrap(nextUser: User) {
       setCloudStatus('syncing');
+      setBootstrapError(null);
       const [profileRes, membershipRes] = await Promise.all([
         supabase.from('profiles').select('display_name,avatar_url').eq('id', nextUser.id).single(),
         supabase.from('workspace_members').select('workspace_id,role').eq('user_id', nextUser.id).eq('status', 'active').order('created_at').limit(1).single(),
@@ -60,11 +63,23 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       setReady(true);
     }
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getSession().then(async ({ data, error }) => {
       if (disposed) return;
+      if (error) {
+        console.error('Personal OS session check failed', error);
+        setBootstrapError('Não foi possível verificar sua sessão.');
+        setCloudStatus('error');
+        setReady(true);
+        return;
+      }
       if (data.session?.user) {
         try { await bootstrap(data.session.user); }
-        catch (error) { console.error('Personal OS bootstrap failed', error); setCloudStatus('error'); setReady(true); }
+        catch (error) {
+          console.error('Personal OS bootstrap failed', error);
+          setBootstrapError('Não foi possível carregar seu ambiente pessoal.');
+          setCloudStatus('error');
+          setReady(true);
+        }
       } else {
         setReady(true);
       }
@@ -77,11 +92,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         setUser(null);
         setProfile(null);
         setWorkspace(null);
+        setBootstrapError(null);
         setReady(true);
         return;
       }
       void bootstrap(session.user).catch(error => {
         console.error('Personal OS auth refresh failed', error);
+        setBootstrapError('Não foi possível atualizar sua sessão.');
         setCloudStatus('error');
         setReady(true);
       });
@@ -109,6 +126,17 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, [user, profile, workspace, cloudStatus]);
 
   if (isPublicRoute) return <>{children}</>;
+
+  if (ready && bootstrapError) {
+    return <main style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'#090c11',color:'#eef2f7',fontFamily:'Inter,system-ui,sans-serif',padding:24}}>
+      <div style={{maxWidth:430,textAlign:'center'}}>
+        <div style={{fontSize:28,marginBottom:10}}>⌁</div>
+        <b>Personal OS</b>
+        <p style={{color:'#9aa5b3',fontSize:13,lineHeight:1.6}}>{bootstrapError}</p>
+        <button onClick={()=>router.replace('/login/')} style={{border:'1px solid #334052',background:'#151b24',color:'#eef2f7',borderRadius:10,padding:'10px 14px',fontSize:13,cursor:'pointer'}}>Voltar para o login</button>
+      </div>
+    </main>;
+  }
 
   if (!ready || !identity) {
     return <main style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'#090c11',color:'#eef2f7',fontFamily:'Inter,system-ui,sans-serif'}}>
