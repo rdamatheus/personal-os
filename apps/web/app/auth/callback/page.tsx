@@ -10,22 +10,44 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     let active = true;
+
     async function finish() {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
+        // The Supabase client is configured with detectSessionInUrl=true and PKCE.
+        // It may already have exchanged the one-time auth code before this page runs,
+        // so this callback must not attempt a second exchange.
+        const current = await supabase.auth.getSession();
+        if (current.error) throw current.error;
+        if (current.data.session) {
+          if (active) router.replace('/');
+          return;
         }
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (!data.session) throw new Error('A sessão não foi criada. Tente entrar novamente.');
+
+        const session = await new Promise<Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']>((resolve, reject) => {
+          let settled = false;
+          const timeout = window.setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            subscription.subscription.unsubscribe();
+            reject(new Error('A sessão não foi criada. Tente entrar novamente.'));
+          }, 7000);
+
+          const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+            if (settled || !nextSession) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            subscription.subscription.unsubscribe();
+            resolve(nextSession);
+          });
+        });
+
+        if (!session) throw new Error('A sessão não foi criada. Tente entrar novamente.');
         if (active) router.replace('/');
       } catch (err: any) {
         if (active) setError(err?.message || 'Não foi possível concluir o login.');
       }
     }
+
     void finish();
     return () => { active = false; };
   }, [router]);
