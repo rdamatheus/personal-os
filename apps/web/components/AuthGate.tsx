@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { hydrateCoreStore, watchCoreStore } from '../lib/core-cloud-store';
 import { supabase } from '../lib/supabase';
 
 type Identity = {
@@ -39,7 +38,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let disposed = false;
-    let stopWatching: (() => void) | undefined;
 
     async function bootstrap(nextUser: User) {
       setCloudStatus('syncing');
@@ -55,16 +53,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
       const workspaceRes = await supabase.from('workspaces').select('id,name').eq('id', membershipRes.data.workspace_id).single();
       if (workspaceRes.error) throw workspaceRes.error;
-
-      const baseline = await hydrateCoreStore(workspaceRes.data.id, nextUser.id);
       if (disposed) return;
+
       setUser(nextUser);
-      setProfile({ displayName: profileRes.data.display_name ?? nextUser.email?.split('@')[0] ?? 'Usuário', avatarUrl: profileRes.data.avatar_url });
+      setProfile({
+        displayName: profileRes.data.display_name ?? nextUser.email?.split('@')[0] ?? 'Usuário',
+        avatarUrl: profileRes.data.avatar_url,
+      });
       setWorkspace({ id: workspaceRes.data.id, name: workspaceRes.data.name, role: membershipRes.data.role });
       setIsPlatformAdmin(Boolean(platformAdminRes.data));
       setCloudStatus('ready');
-      stopWatching?.();
-      stopWatching = watchCoreStore(workspaceRes.data.id, nextUser.id, baseline, () => setCloudStatus('error'));
       setReady(true);
     }
 
@@ -93,12 +91,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (disposed) return;
       if (!session?.user) {
-        stopWatching?.();
         setUser(null);
         setProfile(null);
         setWorkspace(null);
         setIsPlatformAdmin(false);
         setBootstrapError(null);
+        setCloudStatus('ready');
         setReady(true);
         return;
       }
@@ -112,7 +110,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     return () => {
       disposed = true;
-      stopWatching?.();
       listener.subscription.unsubscribe();
     };
   }, []);
@@ -158,7 +155,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       <Link href="/routes/" aria-label="Abrir Metas e Rotas" style={{textDecoration:'none',border:'1px solid #31405a',background:'#111824',color:'#c9d7f7',borderRadius:999,padding:'11px 14px',fontSize:13,fontWeight:800,boxShadow:'0 14px 40px rgba(0,0,0,.25)'}}>◎ Rotas</Link>
       <Link href="/diario/" aria-label="Abrir Diário" style={{textDecoration:'none',background:'#e8edf9',color:'#10141b',borderRadius:999,padding:'11px 14px',fontSize:13,fontWeight:800,boxShadow:'0 14px 40px rgba(0,0,0,.35)'}}>✎ Diário</Link>
       <button onClick={signOut} title={`Sair de ${identity.profile.displayName}`} style={{border:'1px solid #29313d',background:'#11161d',color:'#aeb8c6',borderRadius:999,padding:'11px 13px',fontSize:12,cursor:'pointer'}}>Sair</button>
-      <span title={cloudStatus === 'ready' ? 'Sincronizado com a nuvem' : cloudStatus === 'error' ? 'Falha de sincronização' : 'Sincronizando'} style={{width:9,height:9,borderRadius:99,background:cloudStatus === 'ready' ? '#73d39b' : cloudStatus === 'error' ? '#e78a8a' : '#d7b86a',boxShadow:'0 0 0 4px rgba(255,255,255,.04)'}} />
+      <span title={cloudStatus === 'ready' ? 'Conectado ao Supabase' : cloudStatus === 'error' ? 'Falha de conexão' : 'Carregando'} style={{width:9,height:9,borderRadius:99,background:cloudStatus === 'ready' ? '#73d39b' : cloudStatus === 'error' ? '#e78a8a' : '#d7b86a',boxShadow:'0 0 0 4px rgba(255,255,255,.04)'}} />
     </div>
   </IdentityContext.Provider>;
 }
