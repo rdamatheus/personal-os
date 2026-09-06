@@ -1,0 +1,127 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { hydrateCoreStore, watchCoreStore } from '../lib/core-cloud-store';
+import { supabase } from '../lib/supabase';
+
+type Identity = {
+  user: User;
+  profile: { displayName: string; avatarUrl?: string | null };
+  workspace: { id: string; name: string; role: string };
+  cloudStatus: 'ready' | 'syncing' | 'error';
+  signOut: () => Promise<void>;
+};
+
+const IdentityContext = createContext<Identity | null>(null);
+
+export function usePersonalOsIdentity() {
+  const value = useContext(IdentityContext);
+  if (!value) throw new Error('usePersonalOsIdentity must be used inside AuthGate.');
+  return value;
+}
+
+export default function AuthGate({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isPublicRoute = pathname?.endsWith('/login') || pathname?.includes('/auth/callback');
+  const [ready, setReady] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<{ displayName: string; avatarUrl?: string | null } | null>(null);
+  const [workspace, setWorkspace] = useState<{ id: string; name: string; role: string } | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<'ready' | 'syncing' | 'error'>('syncing');
+
+  useEffect(() => {
+    let disposed = false;
+    let stopWatching: (() => void) | undefined;
+
+    async function bootstrap(nextUser: User) {
+      setCloudStatus('syncing');
+      const [profileRes, membershipRes] = await Promise.all([
+        supabase.from('profiles').select('display_name,avatar_url').eq('id', nextUser.id).single(),
+        supabase.from('workspace_members').select('workspace_id,role').eq('user_id', nextUser.id).eq('status', 'active').order('created_at').limit(1).single(),
+      ]);
+      if (profileRes.error) throw profileRes.error;
+      if (membershipRes.error) throw membershipRes.error;
+
+      const workspaceRes = await supabase.from('workspaces').select('id,name').eq('id', membershipRes.data.workspace_id).single();
+      if (workspaceRes.error) throw workspaceRes.error;
+
+      const baseline = await hydrateCoreStore(workspaceRes.data.id, nextUser.id);
+      if (disposed) return;
+      setUser(nextUser);
+      setProfile({ displayName: profileRes.data.display_name ?? nextUser.email?.split('@')[0] ?? 'Usuário', avatarUrl: profileRes.data.avatar_url });
+      setWorkspace({ id: workspaceRes.data.id, name: workspaceRes.data.name, role: membershipRes.data.role });
+      setCloudStatus('ready');
+      stopWatching?.();
+      stopWatching = watchCoreStore(workspaceRes.data.id, nextUser.id, baseline, () => setCloudStatus('error'));
+      setReady(true);
+    }
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (disposed) return;
+      if (data.session?.user) {
+        try { await bootstrap(data.session.user); }
+        catch (error) { console.error('Personal OS bootstrap failed', error); setCloudStatus('error'); setReady(true); }
+      } else {
+        setReady(true);
+      }
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (disposed) return;
+      if (!session?.user) {
+        stopWatching?.();
+        setUser(null);
+        setProfile(null);
+        setWorkspace(null);
+        setReady(true);
+        return;
+      }
+      void bootstrap(session.user).catch(error => {
+        console.error('Personal OS auth refresh failed', error);
+        setCloudStatus('error');
+        setReady(true);
+      });
+    });
+
+    return () => {
+      disposed = true;
+      stopWatching?.();
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (ready && !user && !isPublicRoute) router.replace('/login/');
+  }, [ready, user, isPublicRoute, router]);
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    router.replace('/login/');
+  }
+
+  const identity = useMemo<Identity | null>(() => {
+    if (!user || !profile || !workspace) return null;
+    return { user, profile, workspace, cloudStatus, signOut };
+  }, [user, profile, workspace, cloudStatus]);
+
+  if (isPublicRoute) return <>{children}</>;
+
+  if (!ready || !identity) {
+    return <main style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'#090c11',color:'#eef2f7',fontFamily:'Inter,system-ui,sans-serif'}}>
+      <div style={{textAlign:'center'}}><div style={{fontSize:28,marginBottom:10}}>⌁</div><b>Personal OS</b><p style={{color:'#7f8998',fontSize:13}}>Carregando seu ambiente seguro…</p></div>
+    </main>;
+  }
+
+  return <IdentityContext.Provider value={identity}>
+    {children}
+    <div style={{position:'fixed',right:18,bottom:18,zIndex:80,display:'flex',gap:8,alignItems:'center'}}>
+      <Link href="/diario/" aria-label="Abrir Diário" style={{textDecoration:'none',background:'#e8edf9',color:'#10141b',borderRadius:999,padding:'11px 14px',fontSize:13,fontWeight:800,boxShadow:'0 14px 40px rgba(0,0,0,.35)'}}>✎ Diário</Link>
+      <button onClick={signOut} title={`Sair de ${identity.profile.displayName}`} style={{border:'1px solid #29313d',background:'#11161d',color:'#aeb8c6',borderRadius:999,padding:'11px 13px',fontSize:12,cursor:'pointer'}}>Sair</button>
+      <span title={cloudStatus === 'ready' ? 'Sincronizado com a nuvem' : cloudStatus === 'error' ? 'Falha de sincronização' : 'Sincronizando'} style={{width:9,height:9,borderRadius:99,background:cloudStatus === 'ready' ? '#73d39b' : cloudStatus === 'error' ? '#e78a8a' : '#d7b86a',boxShadow:'0 0 0 4px rgba(255,255,255,.04)'}} />
+    </div>
+  </IdentityContext.Provider>;
+}
