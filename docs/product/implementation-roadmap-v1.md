@@ -30,12 +30,16 @@ AI is an advisor and orchestrator. Deterministic calculations, ownership, author
 - Persistent routes and route steps.
 - Deterministic route progress recalculation.
 - Activity logging for goal/route mutations.
+- Canonical repository/data layer for core personal entities.
+- Canonical `/organizar/` CRUD surface for Goals, Projects and Tasks.
+- Legacy localStorage → Supabase polling bridge retired from the authentication bootstrap.
+- Progression/Journey domain contract and reusable goal archetype frameworks.
 - GitHub Pages deployment and versioned source.
 
 ### Transitional
-- Tasks, projects and decisions still use the legacy dashboard state with a cloud synchronization adapter.
-- Ideas, routines, check-ins, events and journal require full direct database persistence.
-- The main dashboard still contains prototype/demo elements and hard-coded route/project examples.
+- The old main dashboard still contains local prototype/demo state and must no longer be treated as canonical data.
+- Ideas, routines, check-ins, events and journal still need complete user-facing direct persistence flows.
+- The main dashboard still contains hard-coded/demo route/project elements.
 - AI cards and monthly AI budget remain presentation-only until the secure AI backend is connected.
 
 ## Current implementation gate
@@ -44,7 +48,23 @@ Before connecting the real AI Copilot, complete the persistence/CRUD gate docume
 
 - `docs/implementation/crud-audit-v0.5.md`
 
-That document is the authoritative feature-by-feature audit and defines the exact exit criteria for Phase B/C before AI.
+Progression/Copilot product direction is documented in:
+
+- `docs/product/progression-copilot-research-v1.md`
+
+The research introduces a game-inspired progression model without turning real life into arbitrary points:
+
+```text
+current state
+→ goal / dream / need
+→ journey
+→ chapters
+→ missions / route steps
+→ tasks / real actions
+→ evidence / result
+→ unlock next capability
+→ adapt route
+```
 
 ## Phase A — Security and identity
 Status: substantially complete.
@@ -58,18 +78,18 @@ Remaining:
 ## Phase B — Persistent personal core
 Status: in progress; governed by CRUD Audit v0.5.
 
-1. Repository/service layer and lifecycle conventions.
-2. Tasks — replace polling/localStorage adapter with direct repository operations.
-3. Projects — direct persistence and goal relationships.
-4. Goals — complete edit/status/archive lifecycle.
-5. Decisions — direct persistence, assumptions, alternatives and review dates.
-6. Ideas — persistent inbox and explicit promotion flow with provenance.
-7. Routines — persistence plus execution/check history.
-8. Check-ins/events — persistent personal state history.
-9. Journal — persistent private entries with AI exclusion/privacy flags.
-10. Today/History — canonical DB read models.
+1. ✅ Repository/service layer and lifecycle conventions.
+2. ✅ Goals/Projects/Tasks canonical CRUD surface in `/organizar/`.
+3. ✅ Retire the runtime browser polling bridge from authenticated bootstrap.
+4. Decisions — direct persistence, assumptions, alternatives and review dates.
+5. Ideas — persistent inbox and explicit promotion flow with provenance.
+6. Routines — persistence plus execution/check history.
+7. Check-ins/events — persistent personal state history.
+8. Journal — persistent private entries with AI exclusion/privacy flags.
+9. Today/History — canonical DB read models.
+10. Replace or retire remaining prototype sections of the old dashboard.
 
-Success criterion: browser storage is only an optional migration/cache mechanism; the database is the source of truth.
+Success criterion: browser storage is only optional UI/cache/migration state; the database is the source of truth.
 
 ## Phase C — Route engine
 Status: first functional version implemented; lifecycle incomplete.
@@ -85,7 +105,41 @@ Next:
 - Goal progress derived from routes/projects.
 - Provenance and evidence fields for AI/researched routes.
 
-## Phase D — Next Best Action engine
+## Phase D — Journey / Progression engine
+
+Inspired by progression systems such as Big Ambitions, but grounded in real-world state rather than arbitrary game points.
+
+Core principles:
+- user defines what success means;
+- start from current state and constraints;
+- chapters unlock from real prerequisites;
+- progress comes from money, skills, assets, completed work, capabilities and evidence;
+- several route strategies may be valid;
+- time, money, workload and personal state constrain feasibility;
+- failures cause adaptation, not punishment;
+- optional XP/levels are secondary visualizations derived from real progress.
+
+Reusable goal archetypes now exist for:
+- acquire;
+- learn;
+- build;
+- improve;
+- stabilize;
+- decide;
+- experience;
+- habit;
+- financial;
+- career/business;
+- custom.
+
+Next implementation:
+- expose Journey/Chapter language in the Routes UI;
+- persist route chapter/provenance metadata when the schema is ready;
+- add real-world progress metrics and milestone evidence;
+- support alternative route strategies;
+- support route recalculation after major state changes.
+
+## Phase E — Next Best Action engine
 
 Implement deterministic scoring using:
 - priority;
@@ -99,9 +153,9 @@ Implement deterministic scoring using:
 
 The system ranks candidates first. AI explains the recommendation; AI does not invent the ranking silently.
 
-## Phase E — Secure AI Copilot
+## Phase F — Secure AI Copilot
 
-This phase starts only after the CRUD Audit v0.5 exit criteria pass.
+This phase starts only after the CRUD/persistence gate is reliable enough that AI is operating on canonical data.
 
 Architecture:
 
@@ -111,7 +165,7 @@ browser
 Supabase Edge Function
   ↓ curated context
 AI provider adapter
-  ↓ structured proposal
+  ↓ structured Journey/Route proposal
 Personal OS
   ↓ user approval when persistent/high-impact
 Repository / Database
@@ -122,24 +176,28 @@ No provider secret is stored in GitHub or sent to the browser.
 
 Initial capabilities:
 1. contextual conversation;
-2. conversation → proposed goal;
-3. goal → proposed route;
-4. explain Next Best Action;
-5. summarize progress and blockers;
-6. decision preparation with assumptions/trade-offs;
-7. structured proposals requiring confirmation before persistence.
+2. conversation → classified goal archetype;
+3. minimum discovery of current state, deadline, resources and constraints;
+4. goal → proposed Journey with chapters and missions;
+5. alternative route strategies when useful;
+6. explain Next Best Action;
+7. summarize progress and blockers;
+8. decision preparation with assumptions/trade-offs;
+9. researched routes with sources/provenance;
+10. structured proposals requiring confirmation before persistence.
 
 External requirement: an AI API credential must be configured in Supabase Edge Function secrets before real model calls can be enabled.
 
-## Phase F — Structured memory and context
+## Phase G — Structured memory and context
 
 - Curated context assembler by workspace, goal, route, project and decision.
 - Context provenance log.
 - Summaries instead of unlimited chat replay.
 - User-controlled exclusion from AI context for sensitive records.
 - Knowledge items with source, date, confidence and relevance.
+- Current-state snapshots required for route adaptation.
 
-## Phase G — Reviews and learning
+## Phase H — Reviews and learning
 
 - Today cockpit.
 - Daily closeout.
@@ -147,8 +205,9 @@ External requirement: an AI API credential must be configured in Supabase Edge F
 - Monthly trajectory review.
 - Pattern detection with uncertainty and provenance.
 - Recommendation/outcome audit trail.
+- Journey recalculation when assumptions or resources change.
 
-## Phase H — Product hardening
+## Phase I — Product hardening
 
 - Responsive UI and accessibility.
 - Empty/error/loading states.
