@@ -1,0 +1,30 @@
+name: Validate Personal OS
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://xtlubocepsbqanrjabog.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_nCf37VOBL3JpxzL-SxNXxQ_VuxlKyAV
+  NEXT_PUBLIC_BASE_PATH: /personal-os
+  NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: 'false'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Build static site
+        run: npm run build
