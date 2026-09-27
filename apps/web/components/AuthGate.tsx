@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { importLegacyLocalData } from '../lib/legacy-local-import';
 
 type Identity = {
   user: User;
@@ -13,6 +14,12 @@ type Identity = {
   isPlatformAdmin: boolean;
   cloudStatus: 'ready' | 'syncing' | 'error';
   signOut: () => Promise<void>;
+};
+
+type BootstrapWorkspace = {
+  workspace_id: string;
+  workspace_name: string;
+  member_role: string;
 };
 
 const IdentityContext = createContext<Identity | null>(null);
@@ -42,25 +49,36 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     async function bootstrap(nextUser: User) {
       setCloudStatus('syncing');
       setBootstrapError(null);
-      const [profileRes, membershipRes, platformAdminRes] = await Promise.all([
+
+      const { data: workspaceRows, error: workspaceError } = await supabase.rpc('ensure_personal_workspace');
+      if (workspaceError) throw workspaceError;
+      const personalWorkspace = (Array.isArray(workspaceRows) ? workspaceRows[0] : workspaceRows) as BootstrapWorkspace | null;
+      if (!personalWorkspace?.workspace_id) throw new Error('Personal workspace bootstrap returned no workspace.');
+
+      const [profileRes, platformAdminRes] = await Promise.all([
         supabase.from('profiles').select('display_name,avatar_url').eq('id', nextUser.id).single(),
-        supabase.from('workspace_members').select('workspace_id,role').eq('user_id', nextUser.id).eq('status', 'active').order('created_at').limit(1).single(),
         supabase.from('platform_admins').select('user_id').eq('user_id', nextUser.id).maybeSingle(),
       ]);
       if (profileRes.error) throw profileRes.error;
-      if (membershipRes.error) throw membershipRes.error;
       if (platformAdminRes.error) throw platformAdminRes.error;
 
-      const workspaceRes = await supabase.from('workspaces').select('id,name').eq('id', membershipRes.data.workspace_id).single();
-      if (workspaceRes.error) throw workspaceRes.error;
-      if (disposed) return;
+      try {
+        await importLegacyLocalData(personalWorkspace.workspace_id, nextUser.id);
+      } catch (error) {
+        console.error('Personal OS legacy local import failed', error);
+      }
 
+      if (disposed) return;
       setUser(nextUser);
       setProfile({
         displayName: profileRes.data.display_name ?? nextUser.email?.split('@')[0] ?? 'Usuário',
         avatarUrl: profileRes.data.avatar_url,
       });
-      setWorkspace({ id: workspaceRes.data.id, name: workspaceRes.data.name, role: membershipRes.data.role });
+      setWorkspace({
+        id: personalWorkspace.workspace_id,
+        name: personalWorkspace.workspace_name,
+        role: personalWorkspace.member_role,
+      });
       setIsPlatformAdmin(Boolean(platformAdminRes.data));
       setCloudStatus('ready');
       setReady(true);

@@ -8,6 +8,7 @@ if (!supabaseUrl || !supabasePublishableKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+  db: { schema: 'personal_os' },
   auth: {
     persistSession: true,
     autoRefreshToken: true,

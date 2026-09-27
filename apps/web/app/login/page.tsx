@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { absoluteAppUrl, supabase } from '../../lib/supabase';
 
+const googleAuthEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === 'true';
+
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -43,6 +45,7 @@ export default function LoginPage() {
   }
 
   async function continueWithGoogle() {
+    if (!googleAuthEnabled) return;
     setLoading(true); setError(''); setMessage('');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -56,10 +59,12 @@ export default function LoginPage() {
       <div style={s.brand}><div style={s.mark}>⌁</div><div><b>Personal OS</b><small>Seu sistema operacional pessoal.</small></div></div>
       <p style={s.kicker}>ACESSO SEGURO</p>
       <h1 style={s.title}>{mode === 'signin' ? 'Entre no seu espaço.' : 'Crie seu espaço pessoal.'}</h1>
-      <p style={s.subtitle}>Seus dados ficam separados por usuário e protegidos no banco. O login Google é apenas autenticação; não concede acesso ao Gmail.</p>
+      <p style={s.subtitle}>Seus dados ficam separados por usuário e protegidos no banco.</p>
 
-      <button onClick={continueWithGoogle} disabled={loading} style={s.google}>G&nbsp;&nbsp; Continuar com Google</button>
-      <div style={s.divider}><span/>ou<span/></div>
+      {googleAuthEnabled ? <>
+        <button onClick={continueWithGoogle} disabled={loading} style={s.google}>G&nbsp;&nbsp; Continuar com Google</button>
+        <div style={s.divider}><span/>ou<span/></div>
+      </> : null}
 
       <form onSubmit={submit} style={s.form}>
         <label style={s.label}>E-mail<input type="email" required autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} style={s.input} placeholder="voce@exemplo.com" /></label>
