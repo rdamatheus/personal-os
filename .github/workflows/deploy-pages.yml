@@ -15,9 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NEXT_PUBLIC_SUPABASE_URL: https://asotrfqaqcbhkjuvkncw.supabase.co
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_MNUBzU55wlWps1TYdQYiQw_mgiL-4cS
+  NEXT_PUBLIC_SUPABASE_URL: https://xtlubocepsbqanrjabog.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_nCf37VOBL3JpxzL-SxNXxQ_VuxlKyAV
   NEXT_PUBLIC_BASE_PATH: /personal-os
+  NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: 'false'
 
 jobs:
   build:
