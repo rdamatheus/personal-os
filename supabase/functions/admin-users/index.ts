@@ -27,18 +27,12 @@ function json(req: Request, body: unknown, status = 200) {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(req) });
-  }
-  if (req.method !== 'POST') {
-    return json(req, { error: 'Method not allowed' }, 405);
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
+  if (req.method !== 'POST') return json(req, { error: 'Method not allowed' }, 405);
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return json(req, { error: 'Authentication required' }, 401);
-    }
+    if (!authHeader?.startsWith('Bearer ')) return json(req, { error: 'Authentication required' }, 401);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const publishableKeysRaw = Deno.env.get('SUPABASE_PUBLISHABLE_KEYS');
@@ -50,22 +44,19 @@ Deno.serve(async (req: Request) => {
 
     const publishableKey = JSON.parse(publishableKeysRaw)?.default;
     const secretKey = JSON.parse(secretKeysRaw)?.default;
-    if (!publishableKey || !secretKey) {
-      console.error('Default Supabase API keys are unavailable to the function.');
-      return json(req, { error: 'Server configuration unavailable' }, 500);
-    }
+    if (!publishableKey || !secretKey) return json(req, { error: 'Server configuration unavailable' }, 500);
 
     const userClient = createClient(supabaseUrl, publishableKey, {
+      db: { schema: 'personal_os' },
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: authHeader } },
     });
     const token = authHeader.slice('Bearer '.length);
     const { data: userData, error: userError } = await userClient.auth.getUser(token);
-    if (userError || !userData.user) {
-      return json(req, { error: 'Invalid or expired session' }, 401);
-    }
+    if (userError || !userData.user) return json(req, { error: 'Invalid or expired session' }, 401);
 
     const adminClient = createClient(supabaseUrl, secretKey, {
+      db: { schema: 'personal_os' },
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
@@ -74,46 +65,44 @@ Deno.serve(async (req: Request) => {
       .select('user_id')
       .eq('user_id', userData.user.id)
       .maybeSingle();
-
     if (platformAdminError) {
       console.error('Platform admin check failed', platformAdminError);
       return json(req, { error: 'Authorization check failed' }, 500);
     }
-    if (!platformAdmin) {
-      return json(req, { error: 'Platform administrator access required' }, 403);
-    }
+    if (!platformAdmin) return json(req, { error: 'Platform administrator access required' }, 403);
 
     const payload = await req.json().catch(() => ({} as Record<string, unknown>));
     const requestedPage = Number((payload as Record<string, unknown>).page ?? 1);
-    const requestedPerPage = Number((payload as Record<string, unknown>).perPage ?? 200);
+    const requestedPerPage = Number((payload as Record<string, unknown>).perPage ?? 100);
     const page = Number.isFinite(requestedPage) ? Math.max(1, Math.floor(requestedPage)) : 1;
-    const perPage = Number.isFinite(requestedPerPage) ? Math.min(500, Math.max(1, Math.floor(requestedPerPage))) : 200;
+    const perPage = Number.isFinite(requestedPerPage) ? Math.min(100, Math.max(1, Math.floor(requestedPerPage))) : 100;
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
 
-    const { data: authPage, error: authError } = await adminClient.auth.admin.listUsers({ page, perPage });
-    if (authError) {
-      console.error('Auth user listing failed', authError);
-      return json(req, { error: 'Could not load users' }, 500);
-    }
+    // A fonte da listagem é o próprio Personal OS. Usuários que pertencem apenas à Croma
+    // compartilham auth.users, mas não aparecem nesta administração.
+    const { data: profiles, error: profilesError, count } = await adminClient
+      .from('profiles')
+      .select('id,display_name,avatar_url,timezone,locale,created_at', { count: 'exact' })
+      .order('created_at', { ascending: true })
+      .range(from, to);
+    if (profilesError) throw profilesError;
 
-    const users = authPage.users ?? [];
-    const userIds = users.map((user) => user.id);
-
-    let profiles: Array<Record<string, any>> = [];
+    const profileRows = profiles ?? [];
+    const userIds = profileRows.map(profile => profile.id);
     let memberships: Array<Record<string, any>> = [];
-    if (userIds.length > 0) {
-      const [profilesRes, membershipsRes] = await Promise.all([
-        adminClient.from('profiles').select('id,display_name,avatar_url,timezone,locale,created_at').in('id', userIds),
-        adminClient.from('workspace_members').select('workspace_id,user_id,role,status,created_at').in('user_id', userIds),
-      ]);
-      if (profilesRes.error) throw profilesRes.error;
-      if (membershipsRes.error) throw membershipsRes.error;
-      profiles = profilesRes.data ?? [];
-      memberships = membershipsRes.data ?? [];
+    if (userIds.length) {
+      const { data, error } = await adminClient
+        .from('workspace_members')
+        .select('workspace_id,user_id,role,status,created_at')
+        .in('user_id', userIds);
+      if (error) throw error;
+      memberships = data ?? [];
     }
 
-    const workspaceIds = [...new Set(memberships.map((membership) => membership.workspace_id).filter(Boolean))];
+    const workspaceIds = [...new Set(memberships.map(membership => membership.workspace_id).filter(Boolean))];
     let workspaces: Array<Record<string, any>> = [];
-    if (workspaceIds.length > 0) {
+    if (workspaceIds.length) {
       const { data, error } = await adminClient
         .from('workspaces')
         .select('id,owner_user_id,name,kind,created_at,archived_at')
@@ -122,8 +111,13 @@ Deno.serve(async (req: Request) => {
       workspaces = data ?? [];
     }
 
-    const profileByUser = new Map(profiles.map((profile) => [profile.id, profile]));
-    const workspaceById = new Map(workspaces.map((workspace) => [workspace.id, workspace]));
+    const authUsers = new Map<string, any>();
+    await Promise.all(userIds.map(async userId => {
+      const { data, error } = await adminClient.auth.admin.getUserById(userId);
+      if (!error && data.user) authUsers.set(userId, data.user);
+    }));
+
+    const workspaceById = new Map(workspaces.map(workspace => [workspace.id, workspace]));
     const membershipsByUser = new Map<string, Array<Record<string, any>>>();
     for (const membership of memberships) {
       const existing = membershipsByUser.get(membership.user_id) ?? [];
@@ -131,30 +125,30 @@ Deno.serve(async (req: Request) => {
       membershipsByUser.set(membership.user_id, existing);
     }
 
-    const normalizedUsers = users.map((user) => {
-      const profile = profileByUser.get(user.id);
-      const userMemberships = membershipsByUser.get(user.id) ?? [];
-      const personalMembership = userMemberships.find((membership) => workspaceById.get(membership.workspace_id)?.kind === 'personal') ?? userMemberships[0];
+    const normalizedUsers = profileRows.map(profile => {
+      const authUser = authUsers.get(profile.id);
+      const userMemberships = membershipsByUser.get(profile.id) ?? [];
+      const personalMembership = userMemberships.find(membership => workspaceById.get(membership.workspace_id)?.kind === 'personal') ?? userMemberships[0];
       const workspace = personalMembership ? workspaceById.get(personalMembership.workspace_id) : undefined;
-      const providers = Array.isArray(user.app_metadata?.providers)
-        ? user.app_metadata.providers
-        : user.app_metadata?.provider
-          ? [user.app_metadata.provider]
+      const providers = Array.isArray(authUser?.app_metadata?.providers)
+        ? authUser.app_metadata.providers
+        : authUser?.app_metadata?.provider
+          ? [authUser.app_metadata.provider]
           : [];
-      const bannedUntil = user.banned_until ? new Date(user.banned_until) : null;
+      const bannedUntil = authUser?.banned_until ? new Date(authUser.banned_until) : null;
       const isBanned = Boolean(bannedUntil && bannedUntil.getTime() > Date.now());
 
       return {
-        id: user.id,
-        email: user.email ?? null,
-        phone: user.phone || null,
-        displayName: profile?.display_name ?? user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'Usuário',
-        avatarUrl: profile?.avatar_url ?? user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
+        id: profile.id,
+        email: authUser?.email ?? null,
+        phone: authUser?.phone || null,
+        displayName: profile.display_name ?? authUser?.user_metadata?.full_name ?? authUser?.user_metadata?.name ?? authUser?.email?.split('@')[0] ?? 'Usuário',
+        avatarUrl: profile.avatar_url ?? authUser?.user_metadata?.avatar_url ?? authUser?.user_metadata?.picture ?? null,
         providers,
-        createdAt: user.created_at,
-        lastSignInAt: user.last_sign_in_at ?? null,
-        emailConfirmedAt: user.email_confirmed_at ?? null,
-        isAnonymous: Boolean(user.is_anonymous),
+        createdAt: authUser?.created_at ?? profile.created_at,
+        lastSignInAt: authUser?.last_sign_in_at ?? null,
+        emailConfirmedAt: authUser?.email_confirmed_at ?? null,
+        isAnonymous: Boolean(authUser?.is_anonymous),
         status: isBanned ? 'suspended' : 'active',
         workspace: workspace ? {
           id: workspace.id,
@@ -171,16 +165,16 @@ Deno.serve(async (req: Request) => {
     const now = Date.now();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
     const summary = {
-      total: authPage.total ?? normalizedUsers.length,
+      total: count ?? normalizedUsers.length,
       returned: normalizedUsers.length,
-      active: normalizedUsers.filter((user) => user.status === 'active').length,
-      google: normalizedUsers.filter((user) => user.providers.includes('google')).length,
-      email: normalizedUsers.filter((user) => user.providers.includes('email')).length,
-      newLast7Days: normalizedUsers.filter((user) => now - new Date(user.createdAt).getTime() <= sevenDaysMs).length,
+      active: normalizedUsers.filter(user => user.status === 'active').length,
+      google: normalizedUsers.filter(user => user.providers.includes('google')).length,
+      email: normalizedUsers.filter(user => user.providers.includes('email')).length,
+      newLast7Days: normalizedUsers.filter(user => now - new Date(user.createdAt).getTime() <= sevenDaysMs).length,
       page,
       perPage,
-      nextPage: authPage.nextPage ?? null,
-      lastPage: authPage.lastPage ?? null,
+      nextPage: count && to + 1 < count ? page + 1 : null,
+      lastPage: count ? Math.max(1, Math.ceil(count / perPage)) : 1,
     };
 
     return json(req, { summary, users: normalizedUsers });
