@@ -1,4 +1,36 @@
-# Protocolo e catálogo de agentes — planejamento
+# Protocolo e catálogo de agentes — planejamento e automações ativas
+
+**Atualização em 09/11/2026:** cinco automações ChatGPT existentes foram reorganizadas e tiveram suas frequências alteradas para **uma execução por hora, cada**, o máximo permitido pela ferramenta. Os agendamentos foram conferidos após a atualização. Isso NÃO significa que o Coordenador nativo do Personal OS, a sincronização dos chats ou as Fases 2–3 do sistema tenham sido implantados. Este arquivo documenta as automações externas, não ativa integrações.
+
+## Estado confirmado: cinco agentes ChatGPT
+
+| Função | Automação existente (ID) | Horário a cada hora (America/Sao_Paulo) |
+|---|---|---|
+| Tecnologia e desenvolvimento | `6af11feedecc8191a812f50a219c3597` | minuto **00** |
+| Comercial, produtos e fornecedores | `6af11fe04a688191ac103bd3818b51ae` | minuto **12** |
+| Administração e financeiro | `6aafe26443d08191ac27b222d8266906` | minuto **24** |
+| Marketing e comunicação | `6abb2b8f845081919a89706ae6319abc` | minuto **36** |
+| Coordenação geral e continuidade | `6ad824403a8c8191a27c42561fe1c756` | minuto **48** |
+
+Os horários são de agendamento; a execução efetiva pode variar conforme o serviço. As cinco rotinas cobrem Croma, Liberty Haul e LUFF Store, cada qual respeitando as regras e fontes do negócio. As automações legadas `Bastidores da Croma` e `Revisar aprovações Croma` permanecem pausadas e suas funções foram incorporadas ao Marketing sem reativação.
+
+### Controle de duplicações, aprovações e custo
+
+- Em cada execução horária, buscar primeiro **novidades verificáveis**; evitar estudos completos e notificações repetidas quando não houver mudança material.
+- O check-in do Instagram deve acontecer no máximo uma vez por dia; o briefing semanal da Croma, no máximo uma vez por segunda-feira.
+- Cada agente mantém **sua responsabilidade funcional**, sem recriar cadastros, decisões, propostas e tarefas de outro.
+- A autorização especial da ISA Liberty de propor sugestões **pending** em `liberty.suggestions`, e a manutenção factual estritamente limitada a três arquivos `docs/gestao/` na Liberty, continuam válidas somente naquele escopo. Nenhuma autonomia de escrita foi automaticamente concedida a outras empresas ou agentes.
+- Publicações, pagamentos, contratações, alterações de produção, dados, preços, sistemas e permissões continuam exigindo as aprovações correspondentes.
+- Dados pessoais do Personal OS não são copiados para diários ou repositórios empresariais; apenas índices e vínculos permitidos.
+- A cadência horária pode aumentar custo/consumo de ferramentas e gerar repetição; reavaliar após observação de execuções reais.
+
+### Fontes e situação de implementação
+
+O Personal OS permanece a **referência transversal de roteamento** e a fonte canônica planejada para agenda e decisões quando persistência/autorização forem implementadas e verificadas. O Croma Hub mantém seus registros proprietários e o Diretório Mestre em desenvolvimento na PR #105. A Liberty mantém seu diretório local e a LUFF, sua documentação e fontes próprias. Os prompts reais das cinco automações ChatGPT são as instruções operacionais executáveis; este documento é um mapa, não a substituição desses prompts.
+
+---
+
+## Histórico documental anterior (08/11/2026)
 
 **Estado em 2026-11-08:** especificação documental. Nenhum novo agente é criado ou ativado por este arquivo.
 
