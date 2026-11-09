@@ -58,6 +58,25 @@ O acesso conectado à plataforma não implica autorização para alterar seus da
 6. **Validar antes de escalar:** amostra não destrutiva, tratamento de erro, rollback, auditoria e comparação pós-mudança.
 7. **Preservar governança:** documentação transversal encaminha para a fonte oficial em vez de substituir histórico de pedidos, catálogo, backlog ou artefatos existentes.
 
+## 4.1 Diagnóstico de roteamento — 2026-11-09
+
+**Leitura verificada, sem execução de sincronização:**
+
+| Destino lógico | Estrutura existente | Limite confirmado |
+|---|---|---|
+| Projetos/tarefas transversais | Personal OS, `personal_os.projects` e `personal_os.tasks`, interface autenticada `apps/web/app/organizar/page.tsx` | Não havia workspace, projetos nem tarefas persistidos no schema na inspeção; não inserir por SQL administrativo para contornar identidade/RLS |
+| Decisões e histórico | `personal_os.decisions` e `personal_os.activity_log` | Tabelas existem; persistência de sessão e ciclo end-to-end dependem de usuário/workspace |
+| Cotações da Croma | Croma Hub `/interno/propostas/`, `public.sales_proposals` | Registro comercial próprio; não replicar na agenda como cotação paralela |
+| Operação gráfica e marketing | Módulos `/interno/operacao/` e `/interno/marketing/` do Croma Hub | Confirmar fluxo e permissões antes de qualquer escrita automática |
+| Catálogo de sistemas | `public.managed_projects`, interface `/interno/projetos/` | Contém sistemas gerenciados, não iniciativas de negócio como o coworking |
+| LUFF Store e Liberty Haul | Repositórios próprios e possíveis módulos operacionais | Validar fontes canônicas e autenticação em cada empresa; não assumir conector de escrita existente |
+
+**Desbloqueio antes da captura via IA:** login do usuário no Personal OS, criação/recuperação do workspace pela rotina existente `ensure_personal_workspace`, teste de gravação/leitura autenticada, confirmação de RLS e aprovação de um contrato de integração por módulo. O uso de uma credencial administrativa de banco para simular um usuário **não é** teste adequado nem substituto da autenticação.
+
+**Protocolo para os agentes:** consultar o [Manual §3.1](MANUAL.md) antes de classificar demandas. O registro proposto permanece **não sincronizado** até haver gravação autorizada e confirmação de leitura. A simples existência de uma automação de acompanhamento não prova que chats são capturados ou que tarefas foram criadas.
+
+O caso “Croma Coworking Criativo + reforma + automação gradual” foi analisado na conversa, mas **não** deve ser tratado como projeto cadastrado no banco enquanto não houver registro canônico verificado. Evitar mantê-lo como agenda paralela neste documento.
+
 ## 5. Limites e pendências
 
 **Implementado na Fase 1:** identificação e documentação das referências.  
