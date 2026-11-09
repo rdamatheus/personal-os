@@ -5,6 +5,8 @@
 **Repositório:** [Personal OS](https://github.com/rdamatheus/personal-os).  
 **Importante:** este documento não representa uma agenda sincronizada nem um inventário completo de pendências.
 
+**Automações externas (09/11/2026):** cinco agentes ChatGPT foram reorganizados e agendados de hora em hora, com funções de Tecnologia, Comercial, Administração, Marketing e Coordenação. Consulte o [catálogo de agentes](AGENTES.md) para horários e identificadores. Isso não implementa a Fase 2/3 da agenda nativa do Personal OS nem sincroniza automaticamente os dados.
+
 ## Objetivo
 
 Oferecer um ponto de orientação comum a chats, pessoas e futuros agentes para retomar trabalhos, consultar decisões e localizar o estado **validado** dos projetos. A agenda e o estado operacional devem morar nas fontes canônicas, não em cópias deste índice.
