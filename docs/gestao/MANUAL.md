@@ -1,6 +1,6 @@
 # Manual de gestão e continuidade de projetos
 
-**Versão documental:** 1.0 — 2026-11-08  
+**Versão documental:** 1.1 — 2026-11-09  
 **Aplicação:** projetos transversais conduzidos a partir do Personal OS.  
 **Situação:** regras documentadas; integração da agenda e automações ainda não implementadas.
 
@@ -44,6 +44,20 @@ Ao consultar ou cadastrar um trabalho no sistema oficial, identificar:
 Não significa criar essas colunas agora. Preferir campos existentes; mudanças de schema dependem de análise e autorização posterior.
 
 **Estados conceituais:** ideia, planejado, em andamento, bloqueado, concluído validado e cancelado. Na Fase 2, mapear esses conceitos aos valores realmente aceitos nos sistemas existentes, sem inventar enumerações nem modificar dados antigos.
+
+## 3.1 Triagem e registro contextual de conversas (regra aprovada em 2026-11-09)
+
+A cada demanda relevante em conversas e agentes, avaliar **empresa**, **assunto**, **projeto relacionado**, **registro existente** e **fonte de verdade**. Não criar registros paralelos: primeiro consultar o módulo responsável, recuperar o ID canônico e classificar se a demanda é projeto, tarefa, proposta, decisão, acompanhamento ou interação pontual.
+
+- **Intenção de registro:** quando não estiver explícita, perguntar de forma breve: “Deseja registrar isso no painel correspondente ou tratar apenas nesta conversa?”. Se a solicitação for claramente pontual, evitar perguntar mecanicamente; se já houver autorização específica para registrar, não repeti-la.
+- **Autorização e alcance:** classificar e propor destino não concede permissão de escrita. Antes de inserir, atualizar ou sincronizar qualquer dado, apresentar alteração, impactos e riscos aplicáveis e obter aprovação explícita, respeitando o escopo autorizado. Registrar uma demanda não autoriza executá-la.
+- **Roteamento por responsabilidade:** cotações e propostas da Croma no módulo comercial já existente; OS e produção na operação gráfica; financeiro na área oficial da empresa correspondente; marketing na central de marketing de cada empresa; projetos, tarefas e decisões transversais nas entidades canônicas do Personal OS, com vínculo à empresa/sistema. LUFF Store e Liberty Haul mantêm fontes operacionais próprias. Confirmar a existência e os nomes reais dos módulos antes de escrever; não inventar telas ou tabelas.
+- **Registro mínimo:** incluir, conforme o contrato da seção 3, referência estável, empresa/área, contexto e objetivo, situação verificada, decisão/aprovação vigente, origem, responsável se conhecido, dependências e próximo passo. Preservar o histórico, sem duplicar demandas ou transformar hipótese em fato.
+- **Agentes e continuidade:** agentes consultam os mesmos registros oficiais, identificam bloqueios, atrasos e oportunidades e **propõem** melhorias para revisão. Não ampliam autonomia ou alteram estado sem autorização própria; cadências e integrações continuam sujeitas às fases aprovadas.
+- **Confirmação obrigatória:** somente informar “registrado no painel” após escrita autorizada e leitura/verificação do registro persistido. Se a integração não estiver habilitada ou o registro não puder ser confirmado, informar “não sincronizado” e oferecer o conteúdo organizado para futura inclusão, sem alegar sucesso.
+- **Privacidade e segregação:** proteger informações financeiras, pessoais, comerciais e de clientes; respeitar workspace/RLS e limites entre empresas. Não colocar esses dados neste manual ou em repositório público.
+
+**Exemplo de aplicação:** o planejamento do coworking criativo, reforma e frente autônoma gradual da Croma deve ser vinculado como iniciativa da Croma na gestão transversal, sem substituir a documentação específica nem presumir que já esteja cadastrado ou sincronizado.
 
 ## 4. Ciclo de trabalho
 
