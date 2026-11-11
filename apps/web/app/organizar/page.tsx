@@ -61,7 +61,7 @@ export default function OrganizarPage() {
     e.preventDefault(); setSaving(true); setError('');
     try {
       if (editingId) await projectsRepository.update({ ...actor, id:editingId, title:projectForm.title, description:projectForm.description, areaId:projectForm.areaId || null, goalId:projectForm.goalId || null, priority:projectForm.priority, startDate:projectForm.startDate || null, targetDate:projectForm.targetDate || null, progress:Number(projectForm.progress), status:projectForm.status });
-      else await projectsRepository.create({ ...actor, title:projectForm.title, description:projectForm.description, areaId:projectForm.areaId || undefined, goalId:projectForm.goalId || undefined, priority:projectForm.priority, startDate:projectForm.startDate || undefined, targetDate:projectForm.targetDate || undefined });
+      else await projectsRepository.create({ ...actor, title:projectForm.title, description:projectForm.description, areaId:projectForm.areaId || undefined, goalId:projectForm.goalId || undefined, priority:projectForm.priority, startDate:projectForm.startDate || undefined, targetDate:projectForm.targetDate || undefined, status:projectForm.status });
       setEditingId(null); setProjectForm(emptyProject); await refresh();
     } catch (err:any) { setError(err?.message || 'Não foi possível salvar o projeto.'); } finally { setSaving(false); }
   }
@@ -73,7 +73,7 @@ export default function OrganizarPage() {
       const estimated = taskForm.estimatedMinutes ? Number(taskForm.estimatedMinutes) : null;
       const energy = taskForm.energyRequired ? Number(taskForm.energyRequired) : null;
       if (editingId) await tasksRepository.update({ ...actor, id:editingId, title:taskForm.title, description:taskForm.description, areaId:taskForm.areaId || null, projectId:taskForm.projectId || null, priority:taskForm.priority, dueAt, estimatedMinutes:estimated, energyRequired:energy, status:taskForm.status });
-      else await tasksRepository.create({ ...actor, title:taskForm.title, description:taskForm.description, areaId:taskForm.areaId || undefined, projectId:taskForm.projectId || undefined, priority:taskForm.priority, dueAt:dueAt || undefined, estimatedMinutes:estimated ?? undefined, energyRequired:energy ?? undefined });
+      else await tasksRepository.create({ ...actor, title:taskForm.title, description:taskForm.description, areaId:taskForm.areaId || undefined, projectId:taskForm.projectId || undefined, priority:taskForm.priority, dueAt:dueAt || undefined, estimatedMinutes:estimated ?? undefined, energyRequired:energy ?? undefined, status:taskForm.status });
       setEditingId(null); setTaskForm(emptyTask); await refresh();
     } catch (err:any) { setError(err?.message || 'Não foi possível salvar a tarefa.'); } finally { setSaving(false); }
   }
