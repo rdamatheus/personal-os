@@ -126,14 +126,19 @@ export const areasRepository = {
   restore: (input: WorkspaceActor & { id: string }) => restoreEntity('areas', { ...input, entityType: 'area' }),
 };
 
+function requireAllowedStatus(value: string, allowed: readonly string[]): string {
+  if (!allowed.includes(value)) throw new Error('Status inicial inválido.');
+  return value;
+}
+
 export const projectsRepository = {
   list: (workspaceId: string) => listActive<ProjectRecord>('projects', 'id,area_id,goal_id,title,description,status,priority,progress,start_date,target_date,archived_at', workspaceId),
-  async create(input: WorkspaceActor & { title: string; description?: string; areaId?: string; goalId?: string; priority?: string; startDate?: string; targetDate?: string }) {
+  async create(input: WorkspaceActor & { title: string; description?: string; areaId?: string; goalId?: string; priority?: string; startDate?: string; targetDate?: string; status?: string }) {
     const title = requireTitle(input.title);
     const { data, error } = await supabase.from('projects').insert({
       workspace_id: input.workspaceId, user_id: input.userId, title,
       description: input.description?.trim() || null, area_id: input.areaId || null, goal_id: input.goalId || null,
-      status: 'active', priority: input.priority || 'medium', progress: 0,
+      status: input.status === undefined ? 'active' : requireAllowedStatus(input.status, ['active', 'planned', 'blocked', 'paused', 'done']), priority: input.priority || 'medium', progress: 0,
       start_date: input.startDate || null, target_date: input.targetDate || null,
     }).select('id,area_id,goal_id,title,description,status,priority,progress,start_date,target_date,archived_at').single();
     if (error) throw error;
@@ -162,12 +167,12 @@ export const projectsRepository = {
 
 export const tasksRepository = {
   list: (workspaceId: string) => listActive<TaskRecord>('tasks', 'id,area_id,project_id,route_step_id,title,description,status,priority,due_at,estimated_minutes,energy_required,archived_at', workspaceId),
-  async create(input: WorkspaceActor & { title: string; description?: string; areaId?: string; projectId?: string; routeStepId?: string; priority?: string; dueAt?: string; estimatedMinutes?: number; energyRequired?: number }) {
+  async create(input: WorkspaceActor & { title: string; description?: string; areaId?: string; projectId?: string; routeStepId?: string; priority?: string; dueAt?: string; estimatedMinutes?: number; energyRequired?: number; status?: string }) {
     const title = requireTitle(input.title);
     const { data, error } = await supabase.from('tasks').insert({
       workspace_id: input.workspaceId, user_id: input.userId, title,
       description: input.description?.trim() || null, area_id: input.areaId || null, project_id: input.projectId || null,
-      route_step_id: input.routeStepId || null, status: 'todo', priority: input.priority || 'medium', due_at: input.dueAt || null,
+      route_step_id: input.routeStepId || null, status: input.status === undefined ? 'todo' : requireAllowedStatus(input.status, ['todo', 'doing', 'blocked', 'done', 'cancelled']), priority: input.priority || 'medium', due_at: input.dueAt || null,
       estimated_minutes: input.estimatedMinutes ?? null, energy_required: input.energyRequired ?? null,
     }).select('id,area_id,project_id,route_step_id,title,description,status,priority,due_at,estimated_minutes,energy_required,archived_at').single();
     if (error) throw error;
